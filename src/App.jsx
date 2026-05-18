@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Upload, Play, Pause, Download, Music, Activity, Layers, History, CheckCircle2, Zap } from 'lucide-react';
+import { Upload, Play, Pause, Download, Music, Activity, Layers, History, CheckCircle2, Zap, Mic } from 'lucide-react';
 import Waveform from './components/Waveform';
 import AudioCropper from './components/AudioCropper';
 import SpectrumChart from './components/SpectrumChart';
+import VoiceRecorder from './components/VoiceRecorder';
 import { getFullAnalysis, reconstructWithN } from './utils/fft';
 import { playBuffer, playTone, getSupportedMimeType, getExtensionForMime } from './utils/audio';
 import './App.css';
@@ -25,6 +26,7 @@ function App() {
     const [playbackProgress, setPlaybackProgress] = useState(0);
     const [pendingBuffer, setPendingBuffer] = useState(null);
     const [showCropper, setShowCropper] = useState(false);
+    const [showRecorder, setShowRecorder] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [processingProgress, setProcessingProgress] = useState(0);
     const [factIndex, setFactIndex] = useState(0);
@@ -57,9 +59,7 @@ function App() {
         setStatus('Select fragment');
     };
 
-    const handleConfirmCrop = (croppedBuffer) => {
-        setShowCropper(false);
-        setPendingBuffer(null);
+    const processAudioBuffer = (buffer) => {
         setIsProcessing(true);
         setProcessingProgress(0);
         setFactIndex(Math.floor(Math.random() * FOURIER_FACTS.length));
@@ -72,7 +72,7 @@ function App() {
             if (progress === 50) {
                 // Run the heavy calculations at 50% progress, when the loader is fully visible
                 setTimeout(() => {
-                    const results = getFullAnalysis(croppedBuffer);
+                    const results = getFullAnalysis(buffer);
                     setAnalysis(results);
                     
                     const initialRecon = {};
@@ -93,6 +93,12 @@ function App() {
                 }, 200);
             }
         }, 80); // 80ms * 20 steps = 1.6s total progress duration
+    };
+
+    const handleConfirmCrop = (croppedBuffer) => {
+        setShowCropper(false);
+        setPendingBuffer(null);
+        processAudioBuffer(croppedBuffer);
     };
 
     const startProgressTracker = (duration) => {
@@ -202,6 +208,10 @@ function App() {
                         <CheckCircle2 size={14} className={analysis ? 'text-green' : ''} />
                         {status}
                     </div>
+                    <button className="btn btn-upload btn-record-mic" onClick={() => { initAudio(); setShowRecorder(true); }}>
+                        <Mic size={18} />
+                        <span>Record Mic</span>
+                    </button>
                     <label className="btn btn-upload">
                         <Upload size={18} />
                         <span>Load Audio</span>
@@ -327,6 +337,26 @@ function App() {
                     audioCtx={audioCtxRef.current}
                     onConfirm={handleConfirmCrop}
                     onCancel={() => { setShowCropper(false); setPendingBuffer(null); setStatus('Upload cancelled'); }}
+                />
+            )}
+
+            {showRecorder && (
+                <VoiceRecorder 
+                    audioCtx={initAudio()}
+                    onConfirmDirect={(recordedBuffer) => {
+                        setShowRecorder(false);
+                        processAudioBuffer(recordedBuffer);
+                    }}
+                    onConfirmCrop={(recordedBuffer) => {
+                        setShowRecorder(false);
+                        setPendingBuffer(recordedBuffer);
+                        setShowCropper(true);
+                        setStatus('Select fragment');
+                    }}
+                    onCancel={() => {
+                        setShowRecorder(false);
+                        setStatus('Ready');
+                    }}
                 />
             )}
 
