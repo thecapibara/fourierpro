@@ -366,16 +366,14 @@ function App() {
                                 <div className="empty-state-mini">No harmonics extracted</div>
                             )}
                         </div>
-                    </div>
 
-                    <div className="card side-card" style={{ marginTop: '1.5rem' }}>
-                        <div className="card-header">
-                            <div className="title">
-                                <Zap size={16} className="text-blue" />
+                        <div className="card-divider"></div>
+                        
+                        <div className="noise-gate-section-mini">
+                            <div className="mini-title-flex">
+                                <Zap size={14} className="text-blue" />
                                 <span>Spectral De-noise Gate</span>
                             </div>
-                        </div>
-                        <div className="noise-gate-container">
                             <p className="mini-desc">Filter out low-amplitude noise bins. Drag to clean up voice recordings or songs in real time!</p>
                             
                             <div className="slider-wrapper">
