@@ -128,33 +128,87 @@ export function getFullAnalysis(buffer) {
     };
 }
 
-export function reconstructWithN(analysis, N, noiseThreshold = 0) {
+export function reconstructWithN(analysis, N, noiseThreshold = 0, eq = { bass: 1, mids: 1, treble: 1 }, filters = { lowpass: 20000, highpass: 0 }) {
     const { sorted, nSize, coefficients } = analysis;
     const re = new Float32Array(nSize);
     const im = new Float32Array(nSize);
     
-    // Create a fast lookup array instead of a heavy JS Set
-    const topNIndices = new Uint8Array(nSize / 2 + 1);
-    const sliced = sorted.slice(0, N);
-    for (let i = 0; i < sliced.length; i++) {
-        const coef = sliced[i];
-        if (coef.mag >= noiseThreshold) {
-            topNIndices[coef.k] = 1;
-        }
-    }
+    const isAll = N >= sorted.length || N === 999999;
 
-    for (let k = 0; k <= nSize / 2; k++) {
-        if (topNIndices[k] === 1) {
-            re[k] = coefficients[k].re;
-            im[k] = coefficients[k].im;
-            
-            // Reconstruct negative frequencies for a real signal
-            if (k > 0 && k < nSize / 2) {
-                re[nSize - k] = re[k];
-                im[nSize - k] = -im[k];
-            } else {
-                // DC (k=0) and Nyquist (k=n/2) must be purely real for real-valued signals
-                im[k] = 0;
+    if (isAll) {
+        // Fast path: bypass topNIndices array completely!
+        for (let k = 0; k <= nSize / 2; k++) {
+            const coef = coefficients[k];
+            if (coef.mag >= noiseThreshold) {
+                // Apply Lowpass and Highpass filters
+                if (coef.freq > filters.lowpass || coef.freq < filters.highpass) {
+                    continue;
+                }
+
+                // Apply 3-Band Equalizer gains
+                let gain = 1.0;
+                if (coef.freq <= 250) {
+                    gain = eq.bass;
+                } else if (coef.freq <= 4000) {
+                    gain = eq.mids;
+                } else {
+                    gain = eq.treble;
+                }
+
+                re[k] = coef.re * gain;
+                im[k] = coef.im * gain;
+                
+                // Reconstruct negative frequencies for a real signal
+                if (k > 0 && k < nSize / 2) {
+                    re[nSize - k] = re[k];
+                    im[nSize - k] = -im[k];
+                } else {
+                    // DC (k=0) and Nyquist (k=n/2) must be purely real for real-valued signals
+                    im[k] = 0;
+                }
+            }
+        }
+    } else {
+        // Standard path for subset N
+        const topNIndices = new Uint8Array(nSize / 2 + 1);
+        const sliced = sorted.slice(0, N);
+        for (let i = 0; i < sliced.length; i++) {
+            const coef = sliced[i];
+            if (coef.mag >= noiseThreshold) {
+                topNIndices[coef.k] = 1;
+            }
+        }
+
+        for (let k = 0; k <= nSize / 2; k++) {
+            if (topNIndices[k] === 1) {
+                const coef = coefficients[k];
+                
+                // Apply Lowpass and Highpass filters
+                if (coef.freq > filters.lowpass || coef.freq < filters.highpass) {
+                    continue;
+                }
+
+                // Apply 3-Band Equalizer gains
+                let gain = 1.0;
+                if (coef.freq <= 250) {
+                    gain = eq.bass;
+                } else if (coef.freq <= 4000) {
+                    gain = eq.mids;
+                } else {
+                    gain = eq.treble;
+                }
+
+                re[k] = coef.re * gain;
+                im[k] = coef.im * gain;
+                
+                // Reconstruct negative frequencies for a real signal
+                if (k > 0 && k < nSize / 2) {
+                    re[nSize - k] = re[k];
+                    im[nSize - k] = -im[k];
+                } else {
+                    // DC (k=0) and Nyquist (k=n/2) must be purely real for real-valued signals
+                    im[k] = 0;
+                }
             }
         }
     }

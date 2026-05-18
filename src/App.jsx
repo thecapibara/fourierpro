@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Upload, Play, Pause, Download, Music, Activity, Layers, History, CheckCircle2, Zap, Mic } from 'lucide-react';
+import { Upload, Play, Pause, Download, Music, Activity, Layers, History, CheckCircle2, Zap, Mic, Sliders, Filter } from 'lucide-react';
 import Waveform from './components/Waveform';
 import AudioCropper from './components/AudioCropper';
 import SpectrumChart from './components/SpectrumChart';
@@ -7,14 +7,14 @@ import VoiceRecorder from './components/VoiceRecorder';
 import { getFullAnalysis, reconstructWithN } from './utils/fft';
 import { playBuffer, playTone, getSupportedMimeType, getExtensionForMime } from './utils/audio';
 import './App.css';
-const STEPS = [1, 50, 250, 500, 1000, 2500, 5000, 10000, 20000];
+const STEPS = [50, 250, 1000, 5000, 20000, 131072, 999999];
 
 const FOURIER_FACTS = [
     "Joseph Fourier developed this mathematics in 1807 to model how heat flows through solid metal!",
     "The Cooley-Tukey FFT (1965) is one of the top 10 algorithms of the 20th century, enabling JPEG, MP3, and mobile communications!",
     "Any continuous periodic sound—no matter how complex—can be perfectly reconstructed by summing up simple pure sine waves!",
     "Without the Fast Fourier Transform (FFT), decoding a 10-second audio track would take minutes instead of milliseconds!",
-    "Our optimized Cooley-Tukey FFT runs in-place, achieving a 15x speedup and preventing browser tab freezes!"
+    "An in-place Cooley-Tukey Radix-2 FFT algorithm ensures lightning-fast spectral analysis and buttery-smooth browser performance."
 ];
 
 function App() {
@@ -32,6 +32,10 @@ function App() {
     const [factIndex, setFactIndex] = useState(0);
     const [noiseThreshold, setNoiseThreshold] = useState(0);
     const [tempThreshold, setTempThreshold] = useState(0);
+    const [eq, setEq] = useState({ bass: 1, mids: 1, treble: 1 });
+    const [tempEq, setTempEq] = useState({ bass: 1, mids: 1, treble: 1 });
+    const [filters, setFilters] = useState({ lowpass: 20000, highpass: 0 });
+    const [tempFilters, setTempFilters] = useState({ lowpass: 20000, highpass: 0 });
     
     const audioCtxRef = useRef(null);
     const currentSourceRef = useRef(null);
@@ -64,6 +68,10 @@ function App() {
     const processAudioBuffer = (buffer) => {
         setNoiseThreshold(0);
         setTempThreshold(0);
+        setEq({ bass: 1, mids: 1, treble: 1 });
+        setTempEq({ bass: 1, mids: 1, treble: 1 });
+        setFilters({ lowpass: 20000, highpass: 0 });
+        setTempFilters({ lowpass: 20000, highpass: 0 });
         setIsProcessing(true);
         setProcessingProgress(0);
         setFactIndex(Math.floor(Math.random() * FOURIER_FACTS.length));
@@ -79,13 +87,12 @@ function App() {
                     const results = getFullAnalysis(buffer);
                     setAnalysis(results);
                     
-                    const initialRecon = {};
-                    STEPS.forEach(n => {
-                        const data = reconstructWithN(results, n);
-                        initialRecon[n] = data.slice(0, results.originalLen);
+                    // Lazy-load optimization: Only calculate the active ALL MAX milestone initially
+                    const data = reconstructWithN(results, 999999);
+                    setReconstructions({
+                        [999999]: data.slice(0, results.originalLen)
                     });
-                    setReconstructions(initialRecon);
-                    setCurrentN(20000); 
+                    setCurrentN(999999); 
                 }, 10);
             }
             
@@ -99,15 +106,20 @@ function App() {
         }, 80); // 80ms * 20 steps = 1.6s total progress duration
     };
 
+    const getRawThreshold = useCallback((val) => {
+        if (!analysis || !analysis.sorted || analysis.sorted.length === 0) return 0;
+        const maxPeak = analysis.sorted[0].mag;
+        return val * maxPeak; // 0% to 100% of the peak magnitude
+    }, [analysis]);
+
     const handleThresholdDrag = (val) => {
         setTempThreshold(val);
         if (!analysis) return;
         
-        const maxPeak = Math.max(...analysis.sorted.slice(0, 50).map(c => c.mag));
-        const rawThreshold = val * maxPeak * 0.5;
+        const rawThreshold = getRawThreshold(val);
 
         // Recompute only the active currentN reconstruction for instant waveform feedback
-        const data = reconstructWithN(analysis, currentN, rawThreshold);
+        const data = reconstructWithN(analysis, currentN, rawThreshold, eq, filters);
         setReconstructions(prev => ({
             ...prev,
             [currentN]: data.slice(0, analysis.originalLen)
@@ -118,19 +130,134 @@ function App() {
         setNoiseThreshold(tempThreshold);
         if (!analysis) return;
 
-        const maxPeak = Math.max(...analysis.sorted.slice(0, 50).map(c => c.mag));
-        const rawThreshold = tempThreshold * maxPeak * 0.5;
+        const rawThreshold = getRawThreshold(tempThreshold);
 
-        // Recompute all other milestones in the background now that drag has finished
-        const updatedRecon = {};
-        STEPS.forEach(n => {
-            const data = reconstructWithN(analysis, n, rawThreshold);
-            updatedRecon[n] = data.slice(0, analysis.originalLen);
+        // Highly Optimized: Recompute ONLY the active milestone on release to avoid freezing!
+        const data = reconstructWithN(analysis, currentN, rawThreshold, eq, filters);
+        const sliced = data.slice(0, analysis.originalLen);
+        
+        // Clear all other milestones so they will be lazily recomputed on demand
+        setReconstructions({
+            [currentN]: sliced
         });
-        setReconstructions(updatedRecon);
 
         if (activeSource === 'result') {
             stopPlayback();
+        }
+    };
+
+    const handleEqDrag = (band, val) => {
+        const nextTempEq = { ...tempEq, [band]: val };
+        setTempEq(nextTempEq);
+        if (!analysis) return;
+
+        const rawThreshold = getRawThreshold(noiseThreshold);
+
+        // Recompute only currentN for real-time visual feedback
+        const data = reconstructWithN(analysis, currentN, rawThreshold, nextTempEq, filters);
+        setReconstructions(prev => ({
+            ...prev,
+            [currentN]: data.slice(0, analysis.originalLen)
+        }));
+    };
+
+    const handleEqRelease = () => {
+        setEq(tempEq);
+        if (!analysis) return;
+
+        const rawThreshold = getRawThreshold(noiseThreshold);
+        const data = reconstructWithN(analysis, currentN, rawThreshold, tempEq, filters);
+        const sliced = data.slice(0, analysis.originalLen);
+
+        // Only compute active, clear others for lazy evaluation
+        setReconstructions({
+            [currentN]: sliced
+        });
+
+        if (activeSource === 'result') {
+            stopPlayback();
+        }
+    };
+
+    const handleFilterDrag = (type, val) => {
+        const nextTempFilters = { ...tempFilters, [type]: val };
+        setTempFilters(nextTempFilters);
+        if (!analysis) return;
+
+        const rawThreshold = getRawThreshold(noiseThreshold);
+
+        // Recompute only currentN for real-time visual feedback
+        const data = reconstructWithN(analysis, currentN, rawThreshold, eq, nextTempFilters);
+        setReconstructions(prev => ({
+            ...prev,
+            [currentN]: data.slice(0, analysis.originalLen)
+        }));
+    };
+
+    const handleFilterRelease = () => {
+        setFilters(tempFilters);
+        if (!analysis) return;
+
+        const rawThreshold = getRawThreshold(noiseThreshold);
+        const data = reconstructWithN(analysis, currentN, rawThreshold, eq, tempFilters);
+        const sliced = data.slice(0, analysis.originalLen);
+
+        // Only compute active, clear others for lazy evaluation
+        setReconstructions({
+            [currentN]: sliced
+        });
+
+        if (activeSource === 'result') {
+            stopPlayback();
+        }
+    };
+
+    const applyFilterPreset = (presetName) => {
+        if (!analysis) return;
+        let nextEq = { bass: 1, mids: 1, treble: 1 };
+        let nextFilters = { lowpass: 20000, highpass: 0 };
+
+        if (presetName === 'old-radio') {
+            nextEq = { bass: 0.2, mids: 1.5, treble: 0.4 };
+            nextFilters = { lowpass: 4000, highpass: 400 };
+        } else if (presetName === 'sub-bass') {
+            nextEq = { bass: 2.5, mids: 0.1, treble: 0.0 };
+            nextFilters = { lowpass: 200, highpass: 0 };
+        } else if (presetName === 'bright') {
+            nextEq = { bass: 0.6, mids: 1.2, treble: 2.2 };
+            nextFilters = { lowpass: 16000, highpass: 150 };
+        }
+
+        setEq(nextEq);
+        setTempEq(nextEq);
+        setFilters(nextFilters);
+        setTempFilters(nextFilters);
+
+        const rawThreshold = getRawThreshold(noiseThreshold);
+        const data = reconstructWithN(analysis, currentN, rawThreshold, nextEq, nextFilters);
+        const sliced = data.slice(0, analysis.originalLen);
+
+        setReconstructions({
+            [currentN]: sliced
+        });
+
+        if (activeSource === 'result') {
+            stopPlayback();
+        }
+    };
+
+    const handleSelectStep = (s) => {
+        stopPlayback();
+        setCurrentN(s);
+        
+        if (analysis && !reconstructions[s]) {
+            const rawThreshold = getRawThreshold(noiseThreshold);
+            const data = reconstructWithN(analysis, s, rawThreshold, eq, filters);
+            const sliced = data.slice(0, analysis.originalLen);
+            setReconstructions(prev => ({
+                ...prev,
+                [s]: sliced
+            }));
         }
     };
 
@@ -285,7 +412,7 @@ function App() {
                             <div className="title">
                                 <Layers size={16} />
                                 <span>Reconstruction Result</span>
-                                 {currentN > 0 && <span className="n-badge">{currentN} FREQS</span>}
+                                 {currentN > 0 && <span className="n-badge">{(currentN === 999999 && analysis) ? (analysis.nSize / 2).toLocaleString() : currentN.toLocaleString()} FREQS</span>}
                             </div>
                             <div className="actions-group">
                                 <button className="btn btn-play-main" onClick={() => playAudio('result', reconstructions[currentN])} disabled={!reconstructions[currentN]}>
@@ -307,17 +434,176 @@ function App() {
                         
                         <div className="step-picker-pro">
                             <div className="step-grid-pro">
-                                {STEPS.map(s => (
+                                {STEPS.filter(s => !analysis || s < analysis.nSize / 2 || s === 999999).map(s => (
                                     <button 
                                         key={s} 
                                         className={`step-btn-pro ${currentN === s ? 'active' : ''}`}
-                                        onClick={() => { stopPlayback(); setCurrentN(s); }}
-                                        disabled={!reconstructions[s]}
+                                        onClick={() => handleSelectStep(s)}
+                                        disabled={!analysis}
                                     >
-                                        <div className="step-val">{s}</div>
+                                        <div className="step-val">
+                                            {s === 999999 
+                                                ? (analysis ? (analysis.nSize / 2).toLocaleString() : 'ALL') 
+                                                : s.toLocaleString()}
+                                        </div>
                                         <div className="step-label">COMP</div>
                                     </button>
                                 ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Fourier Interactive DSP Controls */}
+                    <div className="fourier-controls-grid">
+                        {/* 3-Band Equalizer Card */}
+                        <div className="card control-panel-card">
+                            <div className="card-header mini-header">
+                                <div className="title">
+                                    <Sliders size={16} className="text-blue" />
+                                    <span>3-Band Spectral Equalizer</span>
+                                </div>
+                            </div>
+                            <div className="panel-body">
+                                <p className="mini-desc">Adjust frequency band gains. Real-time multipliers applied to coefficients inside the FFT reconstruction loop!</p>
+                                
+                                <div className="eq-sliders-row">
+                                    <div className="eq-slider-col">
+                                        <span className="eq-band-label">Bass</span>
+                                        <input 
+                                            type="range" 
+                                            min="0" 
+                                            max="300" 
+                                            value={Math.round(tempEq.bass * 100)} 
+                                            className="vertical-slider"
+                                            onChange={(e) => handleEqDrag('bass', parseFloat(e.target.value) / 100)}
+                                            onMouseUp={handleEqRelease}
+                                            onTouchEnd={handleEqRelease}
+                                            disabled={!analysis}
+                                        />
+                                        <span className="eq-val-text">{(tempEq.bass).toFixed(1)}x</span>
+                                        <span className="eq-freq-range">0-250Hz</span>
+                                    </div>
+                                    
+                                    <div className="eq-slider-col">
+                                        <span className="eq-band-label">Mids</span>
+                                        <input 
+                                            type="range" 
+                                            min="0" 
+                                            max="300" 
+                                            value={Math.round(tempEq.mids * 100)} 
+                                            className="vertical-slider"
+                                            onChange={(e) => handleEqDrag('mids', parseFloat(e.target.value) / 100)}
+                                            onMouseUp={handleEqRelease}
+                                            onTouchEnd={handleEqRelease}
+                                            disabled={!analysis}
+                                        />
+                                        <span className="eq-val-text">{(tempEq.mids).toFixed(1)}x</span>
+                                        <span className="eq-freq-range">250-4k</span>
+                                    </div>
+                                    
+                                    <div className="eq-slider-col">
+                                        <span className="eq-band-label">Treble</span>
+                                        <input 
+                                            type="range" 
+                                            min="0" 
+                                            max="300" 
+                                            value={Math.round(tempEq.treble * 100)} 
+                                            className="vertical-slider"
+                                            onChange={(e) => handleEqDrag('treble', parseFloat(e.target.value) / 100)}
+                                            onMouseUp={handleEqRelease}
+                                            onTouchEnd={handleEqRelease}
+                                            disabled={!analysis}
+                                        />
+                                        <span className="eq-val-text">{(tempEq.treble).toFixed(1)}x</span>
+                                        <span className="eq-freq-range">4k-20k</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Precision Frequency Filters Card */}
+                        <div className="card control-panel-card">
+                            <div className="card-header mini-header">
+                                <div className="title">
+                                    <Filter size={16} className="text-orange" />
+                                    <span>Precision Spectral Filters</span>
+                                </div>
+                            </div>
+                            <div className="panel-body filters-panel">
+                                <p className="mini-desc">Apply sharp brick-wall frequency domain cuts. Drag sliders or click quick presets below!</p>
+                                
+                                <div className="filter-slider-wrapper">
+                                    <div className="slider-labels">
+                                        <span>Lowpass Cutoff (HF)</span>
+                                        <span className="slider-val-tag">
+                                            {tempFilters.lowpass >= 1000 ? (tempFilters.lowpass / 1000).toFixed(1) + ' kHz' : tempFilters.lowpass + ' Hz'}
+                                        </span>
+                                    </div>
+                                    <input 
+                                        type="range" 
+                                        min="500" 
+                                        max="20000" 
+                                        step="100"
+                                        value={tempFilters.lowpass} 
+                                        className="gate-slider filter-slider"
+                                        onChange={(e) => handleFilterDrag('lowpass', parseInt(e.target.value))}
+                                        onMouseUp={handleFilterRelease}
+                                        onTouchEnd={handleFilterRelease}
+                                        disabled={!analysis}
+                                    />
+                                </div>
+
+                                <div className="filter-slider-wrapper">
+                                    <div className="slider-labels">
+                                        <span>Highpass Cutoff (LF)</span>
+                                        <span className="slider-val-tag">
+                                            {tempFilters.highpass >= 1000 ? (tempFilters.highpass / 1000).toFixed(1) + ' kHz' : tempFilters.highpass + ' Hz'}
+                                        </span>
+                                    </div>
+                                    <input 
+                                        type="range" 
+                                        min="0" 
+                                        max="2000" 
+                                        step="20"
+                                        value={tempFilters.highpass} 
+                                        className="gate-slider filter-slider"
+                                        onChange={(e) => handleFilterDrag('highpass', parseInt(e.target.value))}
+                                        onMouseUp={handleFilterRelease}
+                                        onTouchEnd={handleFilterRelease}
+                                        disabled={!analysis}
+                                    />
+                                </div>
+
+                                <div className="preset-buttons-group">
+                                    <button 
+                                        className="btn btn-preset" 
+                                        onClick={() => applyFilterPreset('old-radio')}
+                                        disabled={!analysis}
+                                    >
+                                        Old Radio
+                                    </button>
+                                    <button 
+                                        className="btn btn-preset" 
+                                        onClick={() => applyFilterPreset('sub-bass')}
+                                        disabled={!analysis}
+                                    >
+                                        Sub-Bass Only
+                                    </button>
+                                    <button 
+                                        className="btn btn-preset" 
+                                        onClick={() => applyFilterPreset('bright')}
+                                        disabled={!analysis}
+                                    >
+                                        Bright Speech
+                                    </button>
+                                    <button 
+                                        className="btn btn-preset btn-preset-reset" 
+                                        onClick={() => applyFilterPreset('reset')}
+                                        disabled={!analysis}
+                                    >
+                                        Reset All
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -394,7 +680,7 @@ function App() {
                                 />
                                 <div className="slider-ticks">
                                     <span>Off (0%)</span>
-                                    <span>Max Gate (50% peak)</span>
+                                    <span>Max Gate (100% peak)</span>
                                 </div>
                             </div>
                         </div>
