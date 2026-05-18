@@ -128,7 +128,7 @@ export function getFullAnalysis(buffer) {
     };
 }
 
-export function reconstructWithN(analysis, N) {
+export function reconstructWithN(analysis, N, noiseThreshold = 0) {
     const { sorted, nSize, coefficients } = analysis;
     const re = new Float32Array(nSize);
     const im = new Float32Array(nSize);
@@ -137,7 +137,10 @@ export function reconstructWithN(analysis, N) {
     const topNIndices = new Uint8Array(nSize / 2 + 1);
     const sliced = sorted.slice(0, N);
     for (let i = 0; i < sliced.length; i++) {
-        topNIndices[sliced[i].k] = 1;
+        const coef = sliced[i];
+        if (coef.mag >= noiseThreshold) {
+            topNIndices[coef.k] = 1;
+        }
     }
 
     for (let k = 0; k <= nSize / 2; k++) {

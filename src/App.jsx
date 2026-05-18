@@ -30,6 +30,8 @@ function App() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [processingProgress, setProcessingProgress] = useState(0);
     const [factIndex, setFactIndex] = useState(0);
+    const [noiseThreshold, setNoiseThreshold] = useState(0);
+    const [tempThreshold, setTempThreshold] = useState(0);
     
     const audioCtxRef = useRef(null);
     const currentSourceRef = useRef(null);
@@ -60,6 +62,8 @@ function App() {
     };
 
     const processAudioBuffer = (buffer) => {
+        setNoiseThreshold(0);
+        setTempThreshold(0);
         setIsProcessing(true);
         setProcessingProgress(0);
         setFactIndex(Math.floor(Math.random() * FOURIER_FACTS.length));
@@ -93,6 +97,41 @@ function App() {
                 }, 200);
             }
         }, 80); // 80ms * 20 steps = 1.6s total progress duration
+    };
+
+    const handleThresholdDrag = (val) => {
+        setTempThreshold(val);
+        if (!analysis) return;
+        
+        const maxPeak = Math.max(...analysis.sorted.slice(0, 50).map(c => c.mag));
+        const rawThreshold = val * maxPeak * 0.5;
+
+        // Recompute only the active currentN reconstruction for instant waveform feedback
+        const data = reconstructWithN(analysis, currentN, rawThreshold);
+        setReconstructions(prev => ({
+            ...prev,
+            [currentN]: data.slice(0, analysis.originalLen)
+        }));
+    };
+
+    const handleThresholdRelease = () => {
+        setNoiseThreshold(tempThreshold);
+        if (!analysis) return;
+
+        const maxPeak = Math.max(...analysis.sorted.slice(0, 50).map(c => c.mag));
+        const rawThreshold = tempThreshold * maxPeak * 0.5;
+
+        // Recompute all other milestones in the background now that drag has finished
+        const updatedRecon = {};
+        STEPS.forEach(n => {
+            const data = reconstructWithN(analysis, n, rawThreshold);
+            updatedRecon[n] = data.slice(0, analysis.originalLen);
+        });
+        setReconstructions(updatedRecon);
+
+        if (activeSource === 'result') {
+            stopPlayback();
+        }
     };
 
     const handleConfirmCrop = (croppedBuffer) => {
@@ -326,6 +365,40 @@ function App() {
                             ) : (
                                 <div className="empty-state-mini">No harmonics extracted</div>
                             )}
+                        </div>
+                    </div>
+
+                    <div className="card side-card" style={{ marginTop: '1.5rem' }}>
+                        <div className="card-header">
+                            <div className="title">
+                                <Zap size={16} className="text-blue" />
+                                <span>Spectral De-noise Gate</span>
+                            </div>
+                        </div>
+                        <div className="noise-gate-container">
+                            <p className="mini-desc">Filter out low-amplitude noise bins. Drag to clean up voice recordings or songs in real time!</p>
+                            
+                            <div className="slider-wrapper">
+                                <div className="slider-labels">
+                                    <span>Threshold</span>
+                                    <span className="slider-val-tag">{Math.round(tempThreshold * 100)}%</span>
+                                </div>
+                                <input 
+                                    type="range" 
+                                    min="0" 
+                                    max="100" 
+                                    value={Math.round(tempThreshold * 100)} 
+                                    className="gate-slider"
+                                    onChange={(e) => handleThresholdDrag(parseFloat(e.target.value) / 100)}
+                                    onMouseUp={handleThresholdRelease}
+                                    onTouchEnd={handleThresholdRelease}
+                                    disabled={!analysis}
+                                />
+                                <div className="slider-ticks">
+                                    <span>Off (0%)</span>
+                                    <span>Max Gate (50% peak)</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
