@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Pause, X, Scissors, Check } from 'lucide-react';
 
 const AudioCropper = ({ buffer, onConfirm, onCancel, audioCtx }) => {

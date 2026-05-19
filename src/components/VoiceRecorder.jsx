@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Mic, Square, Play, Pause, Trash2, Scissors, Check, X } from 'lucide-react';
 
 const VoiceRecorder = ({ onConfirmDirect, onConfirmCrop, onCancel, audioCtx }) => {
@@ -194,7 +194,6 @@ const VoiceRecorder = ({ onConfirmDirect, onConfirmCrop, onCancel, audioCtx }) =
         drawStaticWave(recordedBuffer);
         
         if (isPlaying && playProgress > 0) {
-            const dpr = window.devicePixelRatio || 1;
             const rect = canvas.getBoundingClientRect();
             const w = rect.width;
             const h = rect.height;

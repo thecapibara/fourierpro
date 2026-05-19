@@ -146,14 +146,9 @@ export function reconstructWithN(analysis, N, noiseThreshold = 0, eq = { bass: 1
                 }
 
                 // Apply 3-Band Equalizer gains
-                let gain = 1.0;
-                if (coef.freq <= 250) {
-                    gain = eq.bass;
-                } else if (coef.freq <= 4000) {
-                    gain = eq.mids;
-                } else {
-                    gain = eq.treble;
-                }
+                const gain = coef.freq <= 250
+                    ? eq.bass
+                    : (coef.freq <= 4000 ? eq.mids : eq.treble);
 
                 re[k] = coef.re * gain;
                 im[k] = coef.im * gain;
@@ -169,35 +164,22 @@ export function reconstructWithN(analysis, N, noiseThreshold = 0, eq = { bass: 1
             }
         }
     } else {
-        // Standard path for subset N
-        const topNIndices = new Uint8Array(nSize / 2 + 1);
+        // Standard path for subset N: loop directly over subset N to avoid nSize-dependent iteration overhead
         const sliced = sorted.slice(0, N);
         for (let i = 0; i < sliced.length; i++) {
             const coef = sliced[i];
             if (coef.mag >= noiseThreshold) {
-                topNIndices[coef.k] = 1;
-            }
-        }
-
-        for (let k = 0; k <= nSize / 2; k++) {
-            if (topNIndices[k] === 1) {
-                const coef = coefficients[k];
-                
                 // Apply Lowpass and Highpass filters
                 if (coef.freq > filters.lowpass || coef.freq < filters.highpass) {
                     continue;
                 }
 
                 // Apply 3-Band Equalizer gains
-                let gain = 1.0;
-                if (coef.freq <= 250) {
-                    gain = eq.bass;
-                } else if (coef.freq <= 4000) {
-                    gain = eq.mids;
-                } else {
-                    gain = eq.treble;
-                }
+                const gain = coef.freq <= 250
+                    ? eq.bass
+                    : (coef.freq <= 4000 ? eq.mids : eq.treble);
 
+                const k = coef.k;
                 re[k] = coef.re * gain;
                 im[k] = coef.im * gain;
                 

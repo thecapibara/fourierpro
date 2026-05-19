@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Upload, Play, Pause, Download, Music, Activity, Layers, History, CheckCircle2, Zap, Mic, Sliders, Filter } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Upload, Play, Pause, Download, Activity, Layers, History, CheckCircle2, Zap, Mic, Sliders, Filter } from 'lucide-react';
 import Waveform from './components/Waveform';
 import AudioCropper from './components/AudioCropper';
 import SpectrumChart from './components/SpectrumChart';
@@ -37,19 +37,31 @@ function App() {
     const [filters, setFilters] = useState({ lowpass: 20000, highpass: 0 });
     const [tempFilters, setTempFilters] = useState({ lowpass: 20000, highpass: 0 });
     
-    const audioCtxRef = useRef(null);
+    const [audioCtx, setAudioCtx] = useState(null);
     const currentSourceRef = useRef(null);
     const progressIntervalRef = useRef(null);
 
     const initAudio = () => {
-        if (!audioCtxRef.current) {
-            audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        let ctx = audioCtx;
+        if (!ctx) {
+            ctx = new (window.AudioContext || window.webkitAudioContext)();
+            setAudioCtx(ctx);
         }
-        if (audioCtxRef.current.state === 'suspended') {
-            audioCtxRef.current.resume();
+        if (ctx.state === 'suspended') {
+            ctx.resume();
         }
-        return audioCtxRef.current;
+        return ctx;
     };
+
+    const stopPlayback = useCallback(() => {
+        if (currentSourceRef.current) {
+            currentSourceRef.current.stop();
+            currentSourceRef.current = null;
+        }
+        if (progressIntervalRef.current) cancelAnimationFrame(progressIntervalRef.current);
+        setActiveSource(null);
+        setPlaybackProgress(0);
+    }, []);
 
     const handleUpload = async (e) => {
         const file = e.target.files[0];
@@ -267,7 +279,7 @@ function App() {
         processAudioBuffer(croppedBuffer);
     };
 
-    const startProgressTracker = (duration) => {
+    const startProgressTracker = useCallback((duration) => {
         const startTime = Date.now();
         setPlaybackProgress(0);
         
@@ -284,17 +296,7 @@ function App() {
             }
         };
         progressIntervalRef.current = requestAnimationFrame(update);
-    };
-
-    const stopPlayback = useCallback(() => {
-        if (currentSourceRef.current) {
-            currentSourceRef.current.stop();
-            currentSourceRef.current = null;
-        }
-        if (progressIntervalRef.current) cancelAnimationFrame(progressIntervalRef.current);
-        setActiveSource(null);
-        setPlaybackProgress(0);
-    }, []);
+    }, [stopPlayback]);
 
     const playAudio = (type, data) => {
         if (!data || !analysis) return;
@@ -691,7 +693,7 @@ function App() {
             {showCropper && pendingBuffer && (
                 <AudioCropper 
                     buffer={pendingBuffer} 
-                    audioCtx={audioCtxRef.current}
+                    audioCtx={audioCtx}
                     onConfirm={handleConfirmCrop}
                     onCancel={() => { setShowCropper(false); setPendingBuffer(null); setStatus('Upload cancelled'); }}
                 />
@@ -699,7 +701,7 @@ function App() {
 
             {showRecorder && (
                 <VoiceRecorder 
-                    audioCtx={initAudio()}
+                    audioCtx={audioCtx}
                     onConfirmDirect={(recordedBuffer) => {
                         setShowRecorder(false);
                         processAudioBuffer(recordedBuffer);
