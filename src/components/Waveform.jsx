@@ -16,12 +16,12 @@ const Waveform = ({ data, color, height = 150, progress = 0 }) => {
             const rect = canvas.parentElement.getBoundingClientRect();
             if (rect.width === 0) return;
 
-            canvas.width = rect.width * dpr;
-            canvas.height = height * dpr;
-            ctx.scale(dpr, dpr);
-
-            const w = rect.width;
+            const w = Math.floor(rect.width);
             const h = height;
+
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            ctx.scale(dpr, dpr);
 
             ctx.clearRect(0, 0, w, h);
             
@@ -108,12 +108,12 @@ const Waveform = ({ data, color, height = 150, progress = 0 }) => {
             const rect = canvas.parentElement.getBoundingClientRect();
             if (rect.width === 0) return;
 
-            canvas.width = rect.width * dpr;
-            canvas.height = height * dpr;
-            ctx.scale(dpr, dpr);
-
-            const w = rect.width;
+            const w = Math.floor(rect.width);
             const h = height;
+
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            ctx.scale(dpr, dpr);
 
             ctx.clearRect(0, 0, w, h);
 
