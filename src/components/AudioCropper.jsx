@@ -27,12 +27,12 @@ const AudioCropper = ({ buffer, onConfirm, onCancel, audioCtx }) => {
             const rect = canvas.getBoundingClientRect();
             if (rect.width === 0 || rect.height === 0) return;
 
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
-            ctx.scale(dpr, dpr);
+            const w = Math.floor(rect.width);
+            const h = Math.floor(rect.height);
 
-            const w = rect.width;
-            const h = rect.height;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            ctx.scale(dpr, dpr);
             const data = buffer.getChannelData(0);
             const step = Math.floor(data.length / w) || 1;
             const amp = h / 2;

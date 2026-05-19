@@ -71,12 +71,13 @@ const VoiceRecorder = ({ onConfirmDirect, onConfirmCrop, onCancel, audioCtx }) =
         const dpr = window.devicePixelRatio || 1;
         const rect = canvas.getBoundingClientRect();
         
-        canvas.width = rect.width * dpr;
-        canvas.height = rect.height * dpr;
+        const w = Math.floor(rect.width);
+        const h = Math.floor(rect.height);
+
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
         ctx.scale(dpr, dpr);
         
-        const w = rect.width;
-        const h = rect.height;
         const amp = h / 2;
         
         const analyser = analyserNodeRef.current;
@@ -139,12 +140,13 @@ const VoiceRecorder = ({ onConfirmDirect, onConfirmCrop, onCancel, audioCtx }) =
         const dpr = window.devicePixelRatio || 1;
         const rect = canvas.getBoundingClientRect();
         
-        canvas.width = rect.width * dpr;
-        canvas.height = rect.height * dpr;
+        const w = Math.floor(rect.width);
+        const h = Math.floor(rect.height);
+
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
         ctx.scale(dpr, dpr);
         
-        const w = rect.width;
-        const h = rect.height;
         const amp = h / 2;
         
         const data = buffer.getChannelData(0);
