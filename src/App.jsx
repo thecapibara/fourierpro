@@ -7,7 +7,7 @@ import VoiceRecorder from './components/VoiceRecorder';
 import { getFullAnalysis, reconstructWithN } from './utils/fft';
 import { playBuffer, playTone, getSupportedMimeType, getExtensionForMime } from './utils/audio';
 import './App.css';
-const STEPS = [50, 250, 1000, 5000, 20000, 131072, 999999];
+const STEPS = [50, 250, 1000, 5000, 20000, 65536, 999999];
 
 const FOURIER_FACTS = [
     "Joseph Fourier developed this mathematics in 1807 to model how heat flows through solid metal!",
