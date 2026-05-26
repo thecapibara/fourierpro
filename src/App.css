@@ -1299,3 +1299,283 @@ h1 span { color: var(--accent-secondary); }
     border-color: rgba(255, 126, 95, 0.3) !important;
     color: #ff7e5f !important;
 }
+
+/* ==========================================================================
+   Fourier Academy (Explainer Modal) Styling
+   ========================================================================== */
+
+.btn-academy {
+    background: rgba(168, 85, 247, 0.08) !important;
+    border: 1px solid rgba(168, 85, 247, 0.2) !important;
+    color: #c084fc !important;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.85rem;
+    transition: all 0.25s ease;
+}
+
+.btn-academy:hover:not(:disabled) {
+    background: rgba(168, 85, 247, 0.2) !important;
+    border-color: #c084fc !important;
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.35);
+}
+
+.explainer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(3, 5, 8, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.explainer-modal {
+    background: rgba(10, 13, 18, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 28px;
+    width: 90%;
+    max-width: 960px;
+    height: 85vh;
+    max-height: 720px;
+    padding: 2.25rem;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), 0 0 50px rgba(168, 85, 247, 0.1);
+    animation: modalAppear 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.explainer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+}
+
+.explainer-header h2 {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #ffffff, rgba(255, 255, 255, 0.7));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.explainer-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.explainer-tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.explainer-tab-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.explainer-tab-btn.active {
+    color: #c084fc;
+    background: rgba(168, 85, 247, 0.08);
+}
+
+.explainer-body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 4fr 5fr;
+    gap: 2.25rem;
+    overflow: hidden;
+    min-height: 0; /* Important for scroll containment */
+    margin-bottom: 1.5rem;
+}
+
+.explainer-text-panel {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding-right: 1rem;
+}
+
+.step-tag {
+    font-size: 0.65rem;
+    font-weight: 900;
+    color: #c084fc;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.25rem;
+}
+
+.step-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    margin: 0 0 0.5rem 0;
+    color: #fff;
+}
+
+.step-subtitle {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0 0 1rem 0;
+}
+
+.step-desc-content {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.highlight-box {
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 3px solid #c084fc;
+    border-radius: 0 12px 12px 0;
+    padding: 0.85rem 1rem;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.5;
+    margin-top: 0.5rem;
+}
+
+.explainer-visual-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 20px;
+    padding: 1.25rem;
+}
+
+.explainer-visual-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.canvas-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.65rem;
+    font-family: monospace;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+    font-weight: bold;
+}
+
+.info-tag {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: var(--text-secondary);
+}
+
+.explainer-canvas {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    display: block;
+}
+
+.slider-control-box {
+    margin-top: 1.25rem;
+}
+
+.slider-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.slider-val {
+    font-weight: 700;
+    color: #00d2ff;
+}
+
+.synthesis-controls input[type="range"],
+.slider-control-box input[type="range"],
+.epicycle-controls-row input[type="range"] {
+    width: 100%;
+}
+
+.active-recon {
+    background: rgba(255, 126, 95, 0.15) !important;
+    border-color: rgba(255, 126, 95, 0.4) !important;
+    color: #ff7e5f !important;
+    box-shadow: 0 0 12px rgba(255, 126, 95, 0.2);
+}
+
+.btn-animate-active {
+    background: rgba(168, 85, 247, 0.15) !important;
+    border-color: rgba(168, 85, 247, 0.4) !important;
+    color: #c084fc !important;
+    box-shadow: 0 0 12px rgba(168, 85, 247, 0.2);
+}
+
+.spin-icon {
+    animation: rotate-clockwise 3s linear infinite;
+}
+
+/* Footer elements */
+.explainer-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 1.25rem;
+}
+
+.step-indicators {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.step-indicators .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.step-indicators .dot:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.step-indicators .dot.active {
+    background: #c084fc;
+    transform: scale(1.2);
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+}
+
+.btn-success-finish {
+    background: #00ff88 !important;
+    color: #000 !important;
+    font-weight: 800;
+}
+.btn-success-finish:hover {
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.4) !important;
+}

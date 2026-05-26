@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback } from 'react';
-import { Upload, Play, Pause, Download, Activity, Layers, History, CheckCircle2, Zap, Mic, Sliders, Filter } from 'lucide-react';
+import { Upload, Play, Pause, Download, Activity, Layers, History, CheckCircle2, Zap, Mic, Sliders, Filter, BookOpen } from 'lucide-react';
 import Waveform from './components/Waveform';
 import AudioCropper from './components/AudioCropper';
 import SpectrumChart from './components/SpectrumChart';
 import VoiceRecorder from './components/VoiceRecorder';
+import FourierExplainer from './components/FourierExplainer';
 import { getFullAnalysis, reconstructWithN } from './utils/fft';
 import { playBuffer, playTone, getSupportedMimeType, getExtensionForMime } from './utils/audio';
 import './App.css';
@@ -27,6 +28,7 @@ function App() {
     const [pendingBuffer, setPendingBuffer] = useState(null);
     const [showCropper, setShowCropper] = useState(false);
     const [showRecorder, setShowRecorder] = useState(false);
+    const [showExplainer, setShowExplainer] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [processingProgress, setProcessingProgress] = useState(0);
     const [factIndex, setFactIndex] = useState(0);
@@ -376,6 +378,12 @@ function App() {
                         <CheckCircle2 size={14} className={analysis ? 'text-green' : ''} />
                         {status}
                     </div>
+                    {analysis && (
+                        <button className="btn btn-academy" onClick={() => { initAudio(); setShowExplainer(true); }}>
+                            <BookOpen size={18} />
+                            <span>Fourier Academy</span>
+                        </button>
+                    )}
                     <button className="btn btn-upload btn-record-mic" onClick={() => { initAudio(); setShowRecorder(true); }}>
                         <Mic size={18} />
                         <span>Record Mic</span>
@@ -716,6 +724,14 @@ function App() {
                         setShowRecorder(false);
                         setStatus('Ready');
                     }}
+                />
+            )}
+
+            {showExplainer && analysis && (
+                <FourierExplainer 
+                    analysis={analysis}
+                    audioCtx={audioCtx}
+                    onCancel={() => setShowExplainer(false)}
                 />
             )}
 
