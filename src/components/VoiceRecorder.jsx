@@ -217,10 +217,12 @@ const VoiceRecorder = ({ onConfirmDirect, onConfirmCrop, onCancel, audioCtx }) =
     const stopRecording = useCallback(() => {
         if (!isRecordingRef.current) return;
         
-        cleanupStream();
+        // Stop the recorder BEFORE killing the mic stream so the final
+        // dataavailable event fires with the track still alive
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
             mediaRecorderRef.current.stop();
         }
+        cleanupStream();
         
         isRecordingRef.current = false;
         setIsRecording(false);
@@ -254,12 +256,16 @@ const VoiceRecorder = ({ onConfirmDirect, onConfirmCrop, onCancel, audioCtx }) =
             };
             
             mediaRecorder.onstop = async () => {
-                const blob = new Blob(chunks, { type: 'audio/webm' });
+                const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' });
                 const arrayBuffer = await blob.arrayBuffer();
                 // Decode to AudioBuffer
-                const decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-                setRecordedBuffer(decodedBuffer);
-                drawStaticWave(decodedBuffer);
+                try {
+                    const decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                    setRecordedBuffer(decodedBuffer);
+                    drawStaticWave(decodedBuffer);
+                } catch {
+                    alert('Could not decode the recording. Try a different browser format.');
+                }
             };
             
             mediaRecorder.start();

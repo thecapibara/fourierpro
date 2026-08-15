@@ -43,13 +43,15 @@ export function getSupportedMimeType() {
     for (const type of types) {
         if (MediaRecorder.isTypeSupported(type)) return type;
     }
-    return 'audio/wav';
+    // No explicitly supported type: let MediaRecorder pick its default
+    return null;
 }
 
 export function getExtensionForMime(mime) {
+    if (!mime) return 'webm'; // MediaRecorder default container
     if (mime.includes('mp4')) return 'm4a';
     if (mime.includes('mpeg')) return 'mp3';
     if (mime.includes('ogg')) return 'ogg';
     if (mime.includes('webm')) return 'webm';
-    return 'wav';
+    return 'webm';
 }

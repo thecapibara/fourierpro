@@ -67,16 +67,21 @@ function App() {
 
     const handleUpload = async (e) => {
         const file = e.target.files[0];
+        e.target.value = '';
         if (!file) return;
 
         const ctx = initAudio();
         setStatus('Decoding...');
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = await ctx.decodeAudioData(arrayBuffer);
-        
-        setPendingBuffer(buffer);
-        setShowCropper(true);
-        setStatus('Select fragment');
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const buffer = await ctx.decodeAudioData(arrayBuffer);
+
+            setPendingBuffer(buffer);
+            setShowCropper(true);
+            setStatus('Select fragment');
+        } catch {
+            setStatus('Decode failed: unsupported or corrupted file');
+        }
     };
 
     const processAudioBuffer = (buffer) => {
@@ -337,17 +342,19 @@ function App() {
         
         const mimeType = getSupportedMimeType();
         const ext = getExtensionForMime(mimeType);
-        const recorder = new MediaRecorder(dest.stream, { mimeType });
+        const recorder = new MediaRecorder(dest.stream, mimeType ? { mimeType } : undefined);
         const chunks = [];
         
         recorder.ondataavailable = (e) => chunks.push(e.data);
         recorder.onstop = () => {
-            const blob = new Blob(chunks, { type: mimeType });
+            const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = `fourier_recon_${currentN}.${ext}`;
             a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            ctx.close();
             setStatus('Export complete');
         };
         

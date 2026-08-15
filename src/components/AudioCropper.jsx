@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Play, Pause, X, Scissors, Check } from 'lucide-react';
 
 const AudioCropper = ({ buffer, onConfirm, onCancel, audioCtx }) => {
-    const [range, setRange] = useState({ start: 0, end: Math.min(10, buffer.duration) });
+    const [range, setRange] = useState({ start: 0, end: Math.min(10, Math.max(0.1, buffer.duration)) });
     const [isPlaying, setIsPlaying] = useState(false);
     const [previewProgress, setPreviewProgress] = useState(0);
     
